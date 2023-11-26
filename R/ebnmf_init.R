@@ -85,13 +85,15 @@ ebnmf_init = function(X,
   qf = list(Ef = F_init, Elogf = log(F_init+1e-8))
 
 
-
   return(list(ql=ql,
               qf=qf,
+              q_alpha = list(row = list(mean=rep(1,n),mean_log=rep(0,n)),col = list(mean=rep(1,p),mean_log=rep(0,p))),
               gl=gl,
               gf=gf,
+              g_alpha = list(row = NULL,col = NULL),
               Hl = rep(0,K),
-              Hf = rep(0,K)))
+              Hf = rep(0,K),
+              H_alpha = c(0,0)))
 
 }
 

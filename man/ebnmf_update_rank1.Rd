@@ -14,7 +14,8 @@ ebnmf_update_rank1(
   fix_F,
   smooth_F,
   ebpm_control,
-  warm_start
+  warm_start,
+  over_dispersion
 )
 }
 \description{
