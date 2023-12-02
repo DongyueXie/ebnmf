@@ -139,7 +139,6 @@ ebnmf = function(X,K,
     alpha = exp(alpha)
     alpha = alpha/rowsums(alpha)
 
-    saveRDS(list(res=res,alpha=alpha),file=paste("debug/iter",iter,".rds",sep=''))
 
     if(convergence_criteria == 'mKLabs'){
       obj[iter+1] = mKL(x$x,tcrossprod(res$ql$El,res$qf$Ef)[non0_idx])
