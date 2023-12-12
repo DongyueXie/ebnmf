@@ -2,6 +2,7 @@
 #'@description This function fits Poisson Topic Model with smooth Loading or Factors
 #'@param X count matrix
 #'@param K number of factors/ranks
+#'@param lib_size library size for RNA seq data
 #'@param init initialization methods, default is 'fasttopics'; or provide init as a list with L_init, and F_init.
 #'@param maxiter,maxiter_init maximum iterations
 #'@param tol stop criteria
@@ -37,8 +38,8 @@
 #'@export
 
 ebnmf = function(X,K,
+                 lib_size = NULL,
                   init = 'fasttopics',
-                 over_dispersion = FALSE,
                   maxiter=50,
                   maxiter_init = 100,
                   tol=1e-3,
@@ -50,7 +51,7 @@ ebnmf = function(X,K,
                   printevery=10,
                   verbose=TRUE,
                   convergence_criteria = 'ELBO'){
-
+  over_dispersion = FALSE
   # remove columns that are all 0, and are at the start or end of the matrices
   while(sum(X[,1])==0){
     cat('Removed first column that are all 0')
@@ -68,7 +69,9 @@ ebnmf = function(X,K,
   n = dim(X)[1]
   p = dim(X)[2]
   n_points = n*p
-
+  if(is.null(lib_size)){
+    lib_size = rep(1,n)
+  }
   x_rs = rowSums(X)
   x_cs = colSums(X)
 
@@ -91,7 +94,7 @@ ebnmf = function(X,K,
     cat('\n')
   }
 
-  res = ebnmf_init(X,K,init,maxiter_init)
+  res = ebnmf_init(X,K,init,lib_size,maxiter_init)
 
   if(smooth_F){
     res$qf_aug = vector("list", K)

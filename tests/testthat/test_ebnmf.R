@@ -16,16 +16,21 @@ sigma2=0.5
 lambda_noised = lambda*exp(matrix(rnorm(n*p,0,sqrt(sigma2)),nrow=n))
 X = matrix(rpois(n=length(lambda_noised),lambda_noised),nrow=n)
 
+ss = round(median(rowsums(X))/2)*2
+X = X/rowSums(X)
+X = X*c(rep(ss/2,n/2),rep(ss*2,n/2))
+
+
 library(ebnmf)
 res00= ebnmf(X,3,ebpm.fn = c(ebpm::ebpm_gamma,ebpm::ebpm_gamma),smooth_F = F,tol=1e-5,warm_start = F)
 res0= ebnmf(X,3,ebpm.fn = c(ebpm::ebpm_gamma,smashrgen::BMSM),smooth_F = T,tol=1e-5,warm_start = F)
 res= ebnmf(X,3,ebpm.fn = c(ebpm::ebpm_gamma,smashrgen::ebpm_pois_sgp),smooth_F = T,tol=1e-5,maxiter = 50,warm_start = T,
            smooth_control = list(maxiter=3,m=50))
 res1= ebnmf(X,3,ebpm.fn = c(ebpm::ebpm_gamma,smashrgen::ebpm_pois_sgp),smooth_F = T,tol=1e-5,maxiter = 50,warm_start = T,
-           smooth_control = list(maxiter=3,m=50),over_dispersion = F)
+           smooth_control = list(maxiter=10,m=50),over_dispersion = T)
 
 res= ebnmf(X,3,ebpm.fn = c(ebpm::ebpm_gamma,smashrgen::ebpm_pois_sgp),smooth_F = T,tol=1e-5,maxiter = 50,warm_start = T,
-           smooth_control = list(maxiter=3,m=50),init = 'kmeans')
+           smooth_control = list(maxiter=10,m=50),init = 'kmeans')
 
 plot(res$elbo_trace)
 plot(res$EF[,1],type='l')

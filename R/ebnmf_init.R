@@ -10,6 +10,7 @@
 ebnmf_init = function(X,
                       K,
                       init,
+                      lib_size,
                       maxiter_init = 50){
 
   n = nrow(X)
@@ -74,10 +75,13 @@ ebnmf_init = function(X,
   }
 
   # adjust scale of L and F, mainly for stability.
-  ratio = adjLF(L_init,F_init)
-  L_init = ratio$L_init
-  F_init = ratio$F_init
-
+  # ratio = adjLF(L_init,F_init)
+  # L_init = ratio$L_init
+  # F_init = ratio$F_init
+  # browser()
+  ratio = poisson_to_libsize(F_init,L_init,lib_size)
+  L_init = ratio$L
+  F_init = ratio$FF
   gl = vector("list", K)
   gf = vector("list", K)
 
@@ -87,7 +91,7 @@ ebnmf_init = function(X,
 
   return(list(ql=ql,
               qf=qf,
-              q_alpha = list(row = list(mean=rep(1,n),mean_log=rep(0,n)),col = list(mean=rep(1,p),mean_log=rep(0,p))),
+              q_alpha = list(row = list(mean=lib_size,mean_log=log(lib_size)),col = list(mean=rep(1,p),mean_log=rep(0,p))),
               gl=gl,
               gf=gf,
               g_alpha = list(row = NULL,col = NULL),
