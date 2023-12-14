@@ -11,6 +11,7 @@
 #'@param smooth_F whether smooth l or f, must match the functions in ebpm.fn
 #'@param smooth_control a list. ebnmf_smooth_control_default() gives default settings.
 #'@param convergence_criteria 'mKLabs', or 'ELBO'
+#'@param n_cores number of cores for parallel update
 #'@return EL,EF: posterior of loadings and factors
 #'@examples
 #'set.seed(123)
@@ -35,6 +36,7 @@
 #'@importFrom smashrgen ebps
 #'@importFrom smashrgen BMSM
 #'@importFrom Rfast rowsums
+#'@importFrom parallel mclapply
 #'@export
 
 ebnmf = function(X,K,
@@ -50,7 +52,8 @@ ebnmf = function(X,K,
                   warm_start=TRUE,
                   printevery=10,
                   verbose=TRUE,
-                  convergence_criteria = 'ELBO'){
+                  convergence_criteria = 'ELBO',
+                 n_cores = 1){
   over_dispersion = FALSE
   # remove columns that are all 0, and are at the start or end of the matrices
   while(sum(X[,1])==0){
@@ -115,10 +118,29 @@ ebnmf = function(X,K,
 
   for(iter in 1:maxiter){
 
-    for(k in 1:K){
-      Ez = calc_EZ(x, alpha[,k])
-      res = ebnmf_update_rank1(Ez$rs,Ez$cs,k,ebpm.fn.l,ebpm.fn.f,res,fix_F,smooth_F,smooth_control,warm_start,over_dispersion)
+    if(n_cores==1){
+      for(k in 1:K){
+        Ez = calc_EZ(x, alpha[,k])
+        res = ebnmf_update_rank1(Ez$rs,Ez$cs,k,ebpm.fn.l,ebpm.fn.f,res,fix_F,smooth_F,smooth_control,warm_start,over_dispersion)
+      }
+    }else if(n_cores>1){
+      results = mclapply(1:K, process_iteration_parallel, mc.cores = n_cores,x=x,alpha=alpha,ebpm.fn.l=ebpm.fn.l,ebpm.fn.f=ebpm.fn.f,
+                         res=res,fix_F=fix_F,smooth_F=smooth_F,smooth_control=smooth_control,warm_start=warm_start,over_dispersion=over_dispersion)
+      for(k in 1:K){
+        res$ql$El[,k] = results[[k]]$El
+        res$qf$Ef[,k] = results[[k]]$Ef
+        res$ql$Elogl[,k] = results[[k]]$Elogl
+        res$qf$Elogf[,k] = results[[k]]$Elogf
+        res$gl[[k]] = results[[k]]$gl
+        res$gf[[k]] = results[[k]]$gf
+        res$Hl[k] = results[[k]]$Hl
+        res$Hf[k] = results[[k]]$Hf
+        res$qf_aug[[k]] = results[[k]]$qf_aug
+      }
+    }else{
+      stop('n_scores should be a positive integer')
     }
+
 
     if(over_dispersion){
       alpha_row_scale = c(colSums(tcrossprod(res$qf$Ef,res$ql$El)*res$q_alpha$col$mean))
@@ -218,6 +240,12 @@ calc_H = function(x,s,loglik,pm,pmlog){
   H
 }
 
+
+process_iteration_parallel = function(k,x,alpha,ebpm.fn.l,ebpm.fn.f,res,fix_F,smooth_F,smooth_control,warm_start,over_dispersion) {
+  Ez = calc_EZ(x, alpha[,k])
+  ebnmf_update_rank1_parallel(Ez$rs,Ez$cs,k,ebpm.fn.l,ebpm.fn.f,res,fix_F,smooth_F,smooth_control,warm_start,over_dispersion)
+}
+
 #'@title rank 1 update of the model
 
 ebnmf_update_rank1 = function(l_seq,f_seq,k,ebpm.fn.l,ebpm.fn.f,res,fix_F,smooth_F,ebpm_control,warm_start,over_dispersion){
@@ -260,7 +288,47 @@ ebnmf_update_rank1 = function(l_seq,f_seq,k,ebpm.fn.l,ebpm.fn.f,res,fix_F,smooth
 
 }
 
+ebnmf_update_rank1_parallel = function(l_seq,f_seq,k,ebpm.fn.l,ebpm.fn.f,res,fix_F,smooth_F,ebpm_control,warm_start,over_dispersion){
 
+  # update l
+  #l_scale = sum(res$qf$Ef[,k])
+  #browser()
+  l_scale = res$q_alpha$row$mean*sum(res$q_alpha$col$mean*res$qf$Ef[,k])
+  fit = ebpm.fn.l(l_seq,l_scale)
+  El = fit$posterior$mean
+  Elogl = fit$posterior$mean_log
+  Hl = calc_H(l_seq,l_scale,fit$log_likelihood,fit$posterior$mean,fit$posterior$mean_log)
+  gl = fit$fitted_g
+
+  if(!fix_F){
+    # update f
+    # f_scale = sum(res$ql$El[,k])
+    f_scale = res$q_alpha$col$mean*sum(res$q_alpha$row$mean*res$ql$El[,k])
+    if(smooth_F){
+      if(warm_start){
+        fit = ebpm.fn.f(f_seq,f_scale,g_init=res$gf[[k]],q_init=res$qf_aug[[k]],control=ebpm_control)
+      }else{
+        fit = ebpm.fn.f(f_seq,f_scale,control=ebpm_control)
+      }
+      Ef = fit$posterior$mean
+      Elogf = fit$posterior$mean_log
+      gf = fit$fitted_g
+      qf_aug = fit$posterior
+    }else{
+      fit = ebpm.fn.f(f_seq,f_scale)
+      Ef = fit$posterior$mean
+      Elogf = fit$posterior$mean_log
+      qf_aug = NULL
+      gf = fit$fitted_g
+    }
+
+    Hf = calc_H(f_seq,f_scale,fit$log_likelihood,fit$posterior$mean,fit$posterior$mean_log)
+
+  }
+
+  return(list(El=El,Ef=Ef,Elogl=Elogl,Elogf=Elogf,Hl=Hl,Hf=Hf,gl=gl,gf=gf,qf_aug=qf_aug))
+
+}
 
 
 #' #'@title Default parameters of ebpm

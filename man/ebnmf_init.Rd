@@ -4,7 +4,7 @@
 \alias{ebnmf_init}
 \title{initialize the ebpmf identity model}
 \usage{
-ebnmf_init(X, K, init, maxiter_init = 50)
+ebnmf_init(X, K, init, lib_size, maxiter_init = 50)
 }
 \arguments{
 \item{X}{input data matrix}

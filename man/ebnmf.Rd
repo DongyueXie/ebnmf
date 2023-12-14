@@ -7,8 +7,8 @@
 ebnmf(
   X,
   K,
+  lib_size = NULL,
   init = "fasttopics",
-  over_dispersion = FALSE,
   maxiter = 50,
   maxiter_init = 100,
   tol = 0.001,
@@ -19,13 +19,16 @@ ebnmf(
   warm_start = TRUE,
   printevery = 10,
   verbose = TRUE,
-  convergence_criteria = "ELBO"
+  convergence_criteria = "ELBO",
+  n_cores = 1
 )
 }
 \arguments{
 \item{X}{count matrix}
 
 \item{K}{number of factors/ranks}
+
+\item{lib_size}{library size for RNA seq data}
 
 \item{init}{initialization methods, default is 'fasttopics'; or provide init as a list with L_init, and F_init.}
 
@@ -42,6 +45,8 @@ ebnmf(
 \item{smooth_control}{a list. ebnmf_smooth_control_default() gives default settings.}
 
 \item{convergence_criteria}{'mKLabs', or 'ELBO'}
+
+\item{n_cores}{number of cores for parallel update}
 }
 \value{
 EL,EF: posterior of loadings and factors
